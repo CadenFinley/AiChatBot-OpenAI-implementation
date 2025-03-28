@@ -20,8 +20,7 @@ import org.json.JSONObject;
  * provides methods to create and manage assistants, threads, runs, and handle
  * file operations with the OpenAI API.
  *
- * <p>
- * All methods in this class require a valid OpenAI API key to function.</p>
+ * All methods in this class require a valid OpenAI API key to function.
  *
  * @author Caden Finley
  * @version 1.0

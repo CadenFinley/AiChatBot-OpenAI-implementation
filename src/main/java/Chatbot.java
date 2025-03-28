@@ -61,13 +61,18 @@ public class Chatbot {
             return null;
         }
 
+        // Create metadata for files
+        Map<String, String> fileMetadata = new HashMap<>();
+        fileMetadata.put(fileId, "This fileID is associated with the user info");
+        fileMetadata.put(fileId1, "This fileID is associated with the ACU database");
+
         // Create vector store
         String vectorStoreId = assistantSelfCare.createVectorStore(
                 "User Files",
                 Arrays.asList(fileId, fileId1),
                 null,
                 null,
-                null
+                fileMetadata
         );
 
         if (vectorStoreId == null) {
