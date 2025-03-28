@@ -33,6 +33,12 @@ public class OpenAiAssistantEngine {
      */
     private final String USER_API_KEY;
 
+    // Map to store responses by category (e.g., "run", "assistant", "thread", etc.)
+    private final Map<String, List<String>> responseLog;
+
+    // Maximum number of responses to keep per category (to avoid memory issues)
+    private final int maxResponsesPerCategory;
+
     /**
      * Constructs a new OpenAiAssistantEngine with the specified API key.
      *
@@ -40,6 +46,106 @@ public class OpenAiAssistantEngine {
      */
     public OpenAiAssistantEngine(String apiKey) {
         this.USER_API_KEY = apiKey;
+        this.responseLog = new HashMap<>();
+        this.maxResponsesPerCategory = 100; // Default to storing 100 responses per category
+    }
+
+    /**
+     * Constructs a new OpenAiAssistantEngine with the specified API key and
+     * maximum responses per category.
+     *
+     * @param apiKey The OpenAI API key to use for authentication
+     * @param maxResponsesPerCategory Maximum number of responses to store per
+     * category
+     */
+    public OpenAiAssistantEngine(String apiKey, int maxResponsesPerCategory) {
+        this.USER_API_KEY = apiKey;
+        this.responseLog = new HashMap<>();
+        this.maxResponsesPerCategory = maxResponsesPerCategory;
+    }
+
+    /**
+     * Gets the API response logger instance.
+     *
+     * @return The ResponseLogger instance
+     */
+    public OpenAiAssistantEngine getResponseLogger() {
+        return this;
+    }
+
+    /**
+     * Logs an API response to the specified category.
+     *
+     * @param category The category to log the response under (e.g., "run",
+     * "assistant")
+     * @param response The response string to log
+     */
+    public void logResponse(String category, String response) {
+        if (response == null) {
+            return; // Don't log null responses
+        }
+
+        if (!responseLog.containsKey(category)) {
+            responseLog.put(category, new ArrayList<>());
+        }
+
+        List<String> categoryResponses = responseLog.get(category);
+        categoryResponses.add(response);
+
+        // If we exceed the maximum number of responses, remove the oldest one
+        if (categoryResponses.size() > maxResponsesPerCategory) {
+            categoryResponses.remove(0);
+        }
+    }
+
+    /**
+     * Retrieves all responses for a specific category.
+     *
+     * @param category The category to get responses for
+     * @return List of response strings, or an empty list if category doesn't
+     * exist
+     */
+    public List<String> getResponsesByCategory(String category) {
+        return responseLog.getOrDefault(category, new ArrayList<>());
+    }
+
+    /**
+     * Gets the most recent response for a specific category.
+     *
+     * @param category The category to get the response for
+     * @return The most recent response string, or null if no responses exist
+     */
+    public String getLatestResponse(String category) {
+        List<String> responses = getResponsesByCategory(category);
+        if (responses.isEmpty()) {
+            return null;
+        }
+        return responses.get(responses.size() - 1);
+    }
+
+    /**
+     * Clears all responses for a specific category.
+     *
+     * @param category The category to clear responses for
+     */
+    public void clearCategory(String category) {
+        responseLog.remove(category);
+    }
+
+    /**
+     * Clears all stored responses across all categories.
+     */
+    public void clearAllResponses() {
+        responseLog.clear();
+    }
+
+    /**
+     * Gets all available response categories.
+     *
+     * @return List of category names
+     */
+    public List<String> getCategories() {
+        return new ArrayList<>(responseLog.keySet());
     }
 
     /**
@@ -90,7 +196,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                JSONObject jsonResponse = new JSONObject(response.toString());
+                String responseStr = response.toString();
+                logResponse("file_upload", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -162,7 +270,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                JSONObject jsonResponse = new JSONObject(response.toString());
+                String responseStr = response.toString();
+                logResponse("vector_store", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -258,7 +368,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                JSONObject jsonResponse = new JSONObject(response.toString());
+                String responseStr = response.toString();
+                logResponse("assistant", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -321,7 +433,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                JSONObject jsonResponse = new JSONObject(response.toString());
+                String responseStr = response.toString();
+                logResponse("thread", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -439,7 +553,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                JSONObject jsonResponse = new JSONObject(response.toString());
+                String responseStr = response.toString();
+                logResponse("run", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -484,7 +600,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                return response.toString();
+                String responseStr = response.toString();
+                logResponse("run_status", responseStr);
+                return responseStr;
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
                     String inputLine;
@@ -528,7 +646,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                JSONObject jsonResponse = new JSONObject(response.toString());
+                String responseStr = response.toString();
+                logResponse("messages", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
                 List<String> messages = new ArrayList<>();
                 for (Object messageObj : jsonResponse.getJSONArray("data")) {
                     JSONObject message = (JSONObject) messageObj;
@@ -581,7 +701,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                return new JSONObject(response.toString());
+                String responseStr = response.toString();
+                logResponse("file_info", responseStr);
+                return new JSONObject(responseStr);
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
                     String inputLine;
@@ -636,6 +758,8 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
+                String responseStr = response.toString();
+                logResponse("assistant_update", responseStr);
                 return true;
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -690,7 +814,9 @@ public class OpenAiAssistantEngine {
                 while ((inputLine = in.readLine()) != null) {
                     response.append(inputLine);
                 }
-                JSONObject jsonResponse = new JSONObject(response.toString());
+                String responseStr = response.toString();
+                logResponse("message_add", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
