@@ -42,8 +42,8 @@ public class Chatbot {
                 null,
                 List.of("file_search"),
                 null,
-                null,
-                null,
+                0.2,
+                0.1,
                 null
         );
 
@@ -166,6 +166,13 @@ public class Chatbot {
                     System.out.println("No response received. Please try again.");
                 }
             }
+
+            System.out.println("\nSession Statistics:");
+            assistantSelfCare.getCategories().forEach(category -> {
+                System.out.println(" - " + category + ": "
+                        + assistantSelfCare.getResponsesByCategory(category).size()
+                        + " responses");
+            });
 
             System.out.println("\nThank you for using the ACU AI Academic Advisor. Goodbye!");
 
