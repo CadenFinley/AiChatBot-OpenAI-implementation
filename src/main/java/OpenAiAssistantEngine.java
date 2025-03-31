@@ -32,10 +32,11 @@ public class OpenAiAssistantEngine {
      */
     private final String USER_API_KEY;
 
-    // List to store all responses (for logging purposes)
-    private final ArrayList<Map<String, Object>> responseDataMap;
+    // Map to store responses by category (e.g., "run", "assistant", "thread", etc.)
+    private final Map<String, List<String>> responseLog;
 
-    private final int maxResponsesStored;
+    // Maximum number of responses to keep per category (to avoid memory issues)
+    private final int maxResponsesPerCategory;
 
     /**
      * Constructs a new OpenAiAssistantEngine with the specified API key.
@@ -44,8 +45,8 @@ public class OpenAiAssistantEngine {
      */
     public OpenAiAssistantEngine(String apiKey) {
         this.USER_API_KEY = apiKey;
-        this.responseDataMap = new ArrayList<>();
-        this.maxResponsesStored = 100;
+        this.responseLog = new HashMap<>();
+        this.maxResponsesPerCategory = 100; // Default to storing 100 responses per category
     }
 
     /**
@@ -58,103 +59,100 @@ public class OpenAiAssistantEngine {
      */
     public OpenAiAssistantEngine(String apiKey, int maxResponsesPerCategory) {
         this.USER_API_KEY = apiKey;
-        this.responseDataMap = new ArrayList<>();
-        this.maxResponsesStored = 100;
+        this.responseLog = new HashMap<>();
+        this.maxResponsesPerCategory = maxResponsesPerCategory;
     }
 
     /**
-     * Logs and parses a JSON API response, storing it in the response data map.
+     * Gets the API response logger instance.
      *
-     * @param response The JSON response string to log
+     * @return The ResponseLogger instance
      */
-    public void logResponse(String response) {
+    public OpenAiAssistantEngine getResponseLogger() {
+        return this;
+    }
+
+    /**
+     * Logs an API response to the specified category.
+     *
+     * @param category The category to log the response under (e.g., "run",
+     * "assistant")
+     * @param response The response string to log
+     */
+    public void logResponse(String category, String response) {
         if (response == null) {
             return; // Don't log null responses
         }
 
-        try {
-            // Create a new map for this response (don't reuse the same map)
-            Map<String, Object> responseData = new HashMap<>();
-            JSONObject jsonResponse = new JSONObject(response);
+        if (!responseLog.containsKey(category)) {
+            responseLog.put(category, new ArrayList<>());
+        }
 
-            // Process all keys in the JSON response
-            for (String key : jsonResponse.keySet()) {
-                Object value = jsonResponse.get(key);
-                responseData.put(key, value);
-            }
+        List<String> categoryResponses = responseLog.get(category);
+        categoryResponses.add(response);
 
-            // Store the full response string as well
-            responseData.put("full_response", response);
-
-            // Add to the response data map
-            responseDataMap.add(responseData);
-
-            // If we exceed the maximum number of responses, remove the oldest one
-            if (responseDataMap.size() > maxResponsesStored) {
-                responseDataMap.remove(0);
-            }
-        } catch (JSONException e) {
-            System.out.println("Failed to parse response as JSON: " + e.getMessage());
+        // If we exceed the maximum number of responses, remove the oldest one
+        if (categoryResponses.size() > maxResponsesPerCategory) {
+            categoryResponses.remove(0);
         }
     }
 
     /**
-     * Gets a value from the most recent response by key.
+     * Retrieves all responses for a specific category.
      *
-     * @param key The key to look up in the response
-     * @return The value as a string, or null if not found
+     * @param category The category to get responses for
+     * @return List of response strings, or an empty list if category doesn't
+     * exist
      */
-    public String getDataFromLastResponse(String key) {
-        if (responseDataMap.isEmpty()) {
+    public List<String> getResponsesByCategory(String category) {
+        return responseLog.getOrDefault(category, new ArrayList<>());
+    }
+
+    /**
+     * Gets the most recent response for a specific category.
+     *
+     * @param category The category to get the response for
+     * @return The most recent response string, or null if no responses exist
+     */
+    public String getLatestResponse(String category) {
+        List<String> responses = getResponsesByCategory(category);
+        if (responses.isEmpty()) {
             return null;
         }
-
-        Map<String, Object> lastResponse = responseDataMap.get(responseDataMap.size() - 1);
-        Object value = lastResponse.get(key);
-
-        return value != null ? value.toString() : null;
+        return responses.get(responses.size() - 1);
     }
 
     /**
-     * Gets a specific value from a response by index and key.
+     * Clears all responses for a specific category.
      *
-     * @param index The index of the response (0 is oldest)
-     * @param key The key to look up in the response
-     * @return The value as a string, or null if not found
+     * @param category The category to clear responses for
      */
-    public String getDataFromResponse(int index, String key) {
-        if (index < 0 || index >= responseDataMap.size()) {
-            return null;
-        }
-
-        Map<String, Object> response = responseDataMap.get(index);
-        Object value = response.get(key);
-
-        return value != null ? value.toString() : null;
+    public void clearCategory(String category) {
+        responseLog.remove(category);
     }
 
     /**
-     * Gets the most recent response as a Map.
+     * Clears all stored responses across all categories.
+     */
+    public void clearAllResponses() {
+        responseLog.clear();
+    }
+
+    /**
+     * Gets all available response categories.
      *
-     * @return The most recent response Map, or null if none exists
+     * @return List of category names
      */
-    public Map<String, Object> getLastResponseData() {
-        if (responseDataMap.isEmpty()) {
-            return null;
-        }
-        return responseDataMap.get(responseDataMap.size() - 1);
-    }
-
-    public List<Map<String, Object>> getResponseDataMap() {
-        return responseDataMap;
+    public List<String> getCategories() {
+        return new ArrayList<>(responseLog.keySet());
     }
 
     /**
-     * Uploads a file to OpenAI's API for processing.
+     * Uploads a file to OpenAI's servers for use with assistants.
      *
      * @param file The file to upload
-     * @param purpose The purpose of the file (e.g., "fine-tune")
-     * @return The ID of the uploaded file, or null if upload failed
+     * @param purpose The purpose of the file (e.g., "assistants")
+     * @return The ID of the uploaded file, or null if the upload failed
      */
     public String uploadFile(File file, String purpose) {
         String url = "https://api.openai.com/v1/files";
@@ -198,7 +196,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("file_upload", responseStr);
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
@@ -272,7 +270,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("vector_store", responseStr);
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
@@ -370,7 +368,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("assistant", responseStr);
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
@@ -435,7 +433,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("thread", responseStr);
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
@@ -555,7 +553,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("run", responseStr);
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
@@ -602,7 +600,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("run_status", responseStr);
                 return responseStr;
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -648,7 +646,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("messages", responseStr);
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 List<String> messages = new ArrayList<>();
                 for (Object messageObj : jsonResponse.getJSONArray("data")) {
@@ -703,7 +701,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("file_info", responseStr);
                 return new JSONObject(responseStr);
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -760,7 +758,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("assistant_update", responseStr);
                 return true;
             } catch (IOException e) {
                 try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
@@ -816,7 +814,7 @@ public class OpenAiAssistantEngine {
                     response.append(inputLine);
                 }
                 String responseStr = response.toString();
-                logResponse(responseStr);
+                logResponse("message_add", responseStr);
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
@@ -915,7 +913,6 @@ public class OpenAiAssistantEngine {
                     while ((inputLine = errorReader.readLine()) != null) {
                         errorResponse.append(inputLine);
                     }
-                    logResponse("Failed to delete " + resourceType + ": " + errorResponse.toString());
                     System.out.println("Failed to delete " + resourceType + ": " + errorResponse.toString());
                 } catch (IOException ex) {
                     System.out.println("Failed to read error response: " + ex.getMessage());

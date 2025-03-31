@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.json.JSONObject;
 
@@ -34,11 +33,12 @@ public class Chatbot {
     }
 
     private static String setupAssistant() {
+        // Create assistant
         String assistantId = assistantSelfCare.createAssistant(
                 "gpt-4o-mini",
                 "Personal AI Academic Advisor",
                 null,
-                "You are a real-time chat AI Academic Advisor for Abilene Christian University. Please adress the user by their first and last name when appropriate. Please only answer questions related to the user's academic journey. You are not allowed to answer any other questions.",
+                "You are a real-time chat AI Academic Advisor for Abilene Christian University. Address the student by their first and last name based on the user info provided. Provide information about the student's academic journey, courses, and other academic-related topics. Please adress the student by their first and last name from the user info provided.",
                 null,
                 List.of("file_search"),
                 null,
@@ -52,6 +52,7 @@ public class Chatbot {
             return null;
         }
 
+        // Upload files to OpenAI
         String fileId = assistantSelfCare.uploadFile(USER_INFO, "assistants");
         String fileId1 = assistantSelfCare.uploadFile(ACU_DATABASE, "assistants");
 
@@ -60,10 +61,12 @@ public class Chatbot {
             return null;
         }
 
+        // Create metadata for files
         Map<String, String> fileMetadata = new HashMap<>();
-        fileMetadata.put(fileId, "This fileID is associated with the user info and contains the user's name");
+        fileMetadata.put(fileId, "This fileID is associated with the user info");
         fileMetadata.put(fileId1, "This fileID is associated with the ACU database");
 
+        // Create vector store
         String vectorStoreId = assistantSelfCare.createVectorStore(
                 "User Files",
                 Arrays.asList(fileId, fileId1),
@@ -77,6 +80,7 @@ public class Chatbot {
             return null;
         }
 
+        // Update assistant with vector store
         Map<String, Object> toolResources = new HashMap<>();
         Map<String, List<String>> fileSearch = new HashMap<>();
         fileSearch.put("vector_store_ids", List.of(vectorStoreId));
@@ -118,6 +122,7 @@ public class Chatbot {
                     continue;
                 }
 
+                // Create a thread if it doesn't exist yet
                 if (threadId == null) {
                     List<JSONObject> messages = List.of(
                             new JSONObject()
@@ -130,6 +135,7 @@ public class Chatbot {
                         continue;
                     }
                 } else {
+                    // Add message to existing thread
                     String messageId = assistantSelfCare.addMessageToThread(threadId, userInput);
                     if (messageId == null) {
                         System.out.println("Failed to send message. Please try again.");
@@ -137,6 +143,7 @@ public class Chatbot {
                     }
                 }
 
+                // Create and monitor run
                 String runId = assistantSelfCare.createRun(
                         threadId,
                         assistantId,
@@ -145,29 +152,18 @@ public class Chatbot {
                 );
 
                 if (runId == null) {
-                    System.out.println("\rFailed to create run. Please try again.");
+                    System.out.println("Failed to create run. Please try again.");
                     continue;
                 }
 
-                AtomicBoolean isRunning = new AtomicBoolean(true);
-                Thread loadingThread = startLoadingAnimation(isRunning);
-
                 boolean completed = assistantSelfCare.waitForRunCompletion(threadId, runId, RUN_TIMEOUT_SECONDS);
-
-                isRunning.set(false);
-                try {
-                    loadingThread.join();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-
-                System.out.print("\r                                \r");
 
                 if (!completed) {
                     System.out.println("The assistant encountered an issue. Please try again.");
                     continue;
                 }
 
+                // Get the assistant's response
                 List<String> retrievedMessages = assistantSelfCare.listMessages(threadId, runId);
                 if (retrievedMessages != null && !retrievedMessages.isEmpty()) {
                     System.out.println("\nAdvisor: " + retrievedMessages.get(0));
@@ -176,8 +172,16 @@ public class Chatbot {
                 }
             }
 
+            System.out.println("\nSession Statistics:");
+            assistantSelfCare.getCategories().forEach(category -> {
+                System.out.println(" - " + category + ": "
+                        + assistantSelfCare.getResponsesByCategory(category).size()
+                        + " responses");
+            });
+
             System.out.println("\nThank you for using the ACU AI Academic Advisor. Goodbye!");
 
+            // Clean up resources
             if (threadId != null) {
                 assistantSelfCare.deleteResource("threads", threadId);
             }
@@ -185,28 +189,5 @@ public class Chatbot {
         } catch (IOException e) {
             System.out.println("Error reading input: " + e.getMessage());
         }
-    }
-
-    private static Thread startLoadingAnimation(AtomicBoolean isRunning) {
-        Thread loadingThread = new Thread(() -> {
-            String[] frames = {".  ", ".. ", "...", " ..", "  .", "   "};
-
-            int index = 0;
-            try {
-                while (isRunning.get()) {
-                    System.out.print("\rThinking" + frames[index]);
-                    System.out.flush();
-                    index = (index + 1) % frames.length;
-                    Thread.sleep(300);
-                }
-                System.out.print("\r                                \r");
-                System.out.flush();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        });
-        loadingThread.setDaemon(true);
-        loadingThread.start();
-        return loadingThread;
     }
 }
