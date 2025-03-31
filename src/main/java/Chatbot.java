@@ -33,7 +33,6 @@ public class Chatbot {
     }
 
     private static String setupAssistant() {
-        // Create assistant
         String assistantId = assistantSelfCare.createAssistant(
                 "gpt-4o-mini",
                 "Personal AI Academic Advisor",
@@ -52,7 +51,6 @@ public class Chatbot {
             return null;
         }
 
-        // Upload files to OpenAI
         String fileId = assistantSelfCare.uploadFile(USER_INFO, "assistants");
         String fileId1 = assistantSelfCare.uploadFile(ACU_DATABASE, "assistants");
 
@@ -61,12 +59,10 @@ public class Chatbot {
             return null;
         }
 
-        // Create metadata for files
         Map<String, String> fileMetadata = new HashMap<>();
         fileMetadata.put(fileId, "This fileID is associated with the user info");
         fileMetadata.put(fileId1, "This fileID is associated with the ACU database");
 
-        // Create vector store
         String vectorStoreId = assistantSelfCare.createVectorStore(
                 "User Files",
                 Arrays.asList(fileId, fileId1),
@@ -80,7 +76,6 @@ public class Chatbot {
             return null;
         }
 
-        // Update assistant with vector store
         Map<String, Object> toolResources = new HashMap<>();
         Map<String, List<String>> fileSearch = new HashMap<>();
         fileSearch.put("vector_store_ids", List.of(vectorStoreId));
@@ -106,7 +101,6 @@ public class Chatbot {
 
         System.out.println("\n=== ACU AI Academic Advisor Chat ===");
         System.out.println("Type 'exit' to end the conversation");
-        System.out.println("What would you like to know about your academic journey?");
 
         try {
             String userInput;
@@ -121,8 +115,6 @@ public class Chatbot {
                 if (userInput.isEmpty()) {
                     continue;
                 }
-
-                // Create a thread if it doesn't exist yet
                 if (threadId == null) {
                     List<JSONObject> messages = List.of(
                             new JSONObject()
@@ -143,7 +135,6 @@ public class Chatbot {
                     }
                 }
 
-                // Create and monitor run
                 String runId = assistantSelfCare.createRun(
                         threadId,
                         assistantId,
@@ -162,8 +153,6 @@ public class Chatbot {
                     System.out.println("The assistant encountered an issue. Please try again.");
                     continue;
                 }
-
-                // Get the assistant's response
                 List<String> retrievedMessages = assistantSelfCare.listMessages(threadId, runId);
                 if (retrievedMessages != null && !retrievedMessages.isEmpty()) {
                     System.out.println("\nAdvisor: " + retrievedMessages.get(0));
@@ -172,16 +161,6 @@ public class Chatbot {
                 }
             }
 
-            System.out.println("\nSession Statistics:");
-            assistantSelfCare.getCategories().forEach(category -> {
-                System.out.println(" - " + category + ": "
-                        + assistantSelfCare.getResponsesByCategory(category).size()
-                        + " responses");
-            });
-
-            System.out.println("\nThank you for using the ACU AI Academic Advisor. Goodbye!");
-
-            // Clean up resources
             if (threadId != null) {
                 assistantSelfCare.deleteResource("threads", threadId);
             }
