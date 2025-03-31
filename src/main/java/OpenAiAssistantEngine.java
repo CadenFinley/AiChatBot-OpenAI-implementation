@@ -64,15 +64,6 @@ public class OpenAiAssistantEngine {
     }
 
     /**
-     * Gets the API response logger instance.
-     *
-     * @return The ResponseLogger instance
-     */
-    public OpenAiAssistantEngine getResponseLogger() {
-        return this;
-    }
-
-    /**
      * Logs an API response to the specified category.
      *
      * @param category The category to log the response under (e.g., "run",
