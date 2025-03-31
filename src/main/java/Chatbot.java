@@ -19,14 +19,10 @@ public class Chatbot {
     private static final File ACU_DATABASE = new File("acu_database.txt");
     private static final int RUN_TIMEOUT_SECONDS = 60;
 
-    private static String usersName;
-
     public static void main(String[] args) {
         assistantSelfCare = new OpenAiAssistantEngine(APIKEY);
         System.out.println("-------------------------");
         System.out.println("Setting up AI Academic Advisor...");
-
-        usersName = parseUserInfo();
 
         String assistantId = setupAssistant();
         if (assistantId == null) {
@@ -37,38 +33,12 @@ public class Chatbot {
         startInteractiveChat(assistantId);
     }
 
-    private static String parseUserInfo() {
-        try (BufferedReader reader = new BufferedReader(new java.io.FileReader(USER_INFO))) {
-            String line = reader.readLine();
-            if (line != null && line.startsWith("Name:")) {
-                return line.substring("Name:".length()).trim();
-            } else {
-                System.out.println("Invalid format in user info file. Expected 'Name: <name>' on first line.");
-                return null;
-            }
-        } catch (IOException e) {
-            System.out.println("Error reading user info file: " + e.getMessage());
-            return null;
-        }
-    }
-
     private static String setupAssistant() {
-        String assistantName;
-        if (usersName == null) {
-            assistantName = "AI Academic Advisor";
-        } else {
-            String[] nameParts = usersName.split(" ");
-            if (nameParts.length > 1) {
-                assistantName = "AI Academic Advisor for " + nameParts[0] + " " + nameParts[1];
-            } else {
-                assistantName = "AI Academic Advisor for " + usersName;
-            }
-        }
         String assistantId = assistantSelfCare.createAssistant(
                 "gpt-4o-mini",
-                assistantName,
+                "Personal AI Academic Advisor",
                 null,
-                "You are a real-time chat AI Academic Advisor for Abilene Christian University. Please refer to the user_info file for user related information. ",
+                "You are a real-time chat AI Academic Advisor for Abilene Christian University. Please adress the user by their first and last name when appropriate. Please only answer questions related to the user's academic journey. You are not allowed to answer any other questions.",
                 null,
                 List.of("file_search"),
                 null,
@@ -76,6 +46,11 @@ public class Chatbot {
                 0.1,
                 null
         );
+
+        if (assistantId == null) {
+            System.out.println("Failed to create assistant");
+            return null;
+        }
 
         String fileId = assistantSelfCare.uploadFile(USER_INFO, "assistants");
         String fileId1 = assistantSelfCare.uploadFile(ACU_DATABASE, "assistants");
@@ -86,7 +61,7 @@ public class Chatbot {
         }
 
         Map<String, String> fileMetadata = new HashMap<>();
-        fileMetadata.put(fileId, "This fileID is associated with the user info. Please adress the user by their first and last name provided here.");
+        fileMetadata.put(fileId, "This fileID is associated with the user info and contains the user's name");
         fileMetadata.put(fileId1, "This fileID is associated with the ACU database");
 
         String vectorStoreId = assistantSelfCare.createVectorStore(
