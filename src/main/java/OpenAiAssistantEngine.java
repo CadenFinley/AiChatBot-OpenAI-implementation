@@ -46,7 +46,7 @@ public class OpenAiAssistantEngine {
     public OpenAiAssistantEngine(String apiKey) {
         this.USER_API_KEY = apiKey;
         this.responseLog = new HashMap<>();
-        this.maxResponsesPerCategory = 100; // Default to storing 100 responses per category
+        this.maxResponsesPerCategory = 100;
     }
 
     /**
