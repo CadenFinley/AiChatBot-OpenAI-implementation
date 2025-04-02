@@ -11,6 +11,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -104,6 +110,33 @@ public class OpenAiAssistantEngine {
 
     public List<String> getCategories() {
         return new ArrayList<>(responseLog.keySet());
+    }
+
+    public static boolean testAPIKey(String apiKey) {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<Boolean> future = executor.submit(() -> {
+            String url = "https://api.openai.com/v1/engines";
+            try {
+                URL obj = new URL(url);
+                HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+                con.setRequestMethod("GET");
+                con.setRequestProperty("Authorization", "Bearer " + apiKey);
+                int responseCode = con.getResponseCode();
+                return responseCode == 200;
+            } catch (IOException e) {
+                return false;
+            }
+        });
+        try {
+            return future.get(10, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            return false;
+        } catch (InterruptedException | ExecutionException e) {
+            return false;
+        } finally {
+            executor.shutdown();
+        }
     }
 
     /*
