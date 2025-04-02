@@ -17,7 +17,7 @@ class OpenAiAssistantEngineTest {
     private static String testAssistantId;
     private static String testThreadId;
     private static String testFileId;
-    private static final String TEST_API_KEY = "you wish haha";
+    private static final String TEST_API_KEY = System.getenv("OPENAI_API_KEY");
 
     @BeforeAll
     static void setUp() {
