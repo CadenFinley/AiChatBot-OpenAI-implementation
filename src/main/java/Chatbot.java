@@ -137,8 +137,22 @@ public class Chatbot {
                 String runId = assistantSelfCare.createRun(
                         threadId,
                         assistantId,
-                        null, null, null, null, null, null, null, null, null, null,
-                        null, null, null, null, null, null
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
                 );
 
                 if (runId == null) {
