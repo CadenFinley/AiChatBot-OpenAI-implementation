@@ -380,6 +380,52 @@ public class OpenAiAssistantEngine {
     }
 
     /**
+     * Retrieves information about a specific assistant.
+     *
+     * @param assistantId The ID of the assistant to retrieve
+     * @return JSON string containing assistant details, or null if retrieval
+     * failed
+     */
+    public String retrieveAssistant(String assistantId) {
+        String url = "https://api.openai.com/v1/assistants/" + assistantId;
+        String apiKey = USER_API_KEY;
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("assistant_retrieve", responseStr);
+                return responseStr;
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to retrieve assistant: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to retrieve assistant: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Creates a new thread for conversation.
      *
      * @param messages Optional initial messages for the thread
@@ -715,10 +761,21 @@ public class OpenAiAssistantEngine {
      * Updates an existing assistant's properties.
      *
      * @param assistantId The ID of the assistant to update
-     * @param toolResources New tool resources to set
+     * @param description Optional description of the assistant (max 512 chars)
+     * @param instructions Optional system instructions (max 256,000 chars)
+     * @param metadata Optional key-value pairs for additional information
+     * @param model Optional ID of the model to use
+     * @param name Optional name for the assistant (max 256 chars)
+     * @param reasoningEffort Optional effort level for reasoning
+     * (low/medium/high)
+     * @param responseFormat Optional format specification for model output
+     * @param temperature Optional sampling temperature (0-2)
+     * @param toolResources Optional resources used by assistant's tools
+     * @param tools Optional list of tools to enable
+     * @param topP Optional nucleus sampling parameter
      * @return true if update was successful, false otherwise
      */
-    public boolean updateAssistant(String assistantId, Map<String, Object> toolResources) {
+    public boolean modifyAssistant(String assistantId, String description, String instructions, Map<String, String> metadata, String model, String name, String reasoningEffort, JSONObject responseFormat, Double temperature, Map<String, Object> toolResources, List<JSONObject> tools, Double topP) {
         String url = "https://api.openai.com/v1/assistants/" + assistantId;
         String apiKey = USER_API_KEY;
         try {
@@ -731,8 +788,38 @@ public class OpenAiAssistantEngine {
             con.setDoOutput(true);
 
             JSONObject body = new JSONObject();
+            if (description != null) {
+                body.put("description", description);
+            }
+            if (instructions != null) {
+                body.put("instructions", instructions);
+            }
+            if (metadata != null && !metadata.isEmpty()) {
+                body.put("metadata", metadata);
+            }
+            if (model != null) {
+                body.put("model", model);
+            }
+            if (name != null) {
+                body.put("name", name);
+            }
+            if (reasoningEffort != null) {
+                body.put("reasoning_effort", reasoningEffort);
+            }
+            if (responseFormat != null) {
+                body.put("response_format", responseFormat);
+            }
+            if (temperature != null) {
+                body.put("temperature", temperature);
+            }
             if (toolResources != null && !toolResources.isEmpty()) {
                 body.put("tool_resources", new JSONObject(toolResources));
+            }
+            if (tools != null && !tools.isEmpty()) {
+                body.put("tools", tools);
+            }
+            if (topP != null) {
+                body.put("top_p", topP);
             }
 
             try (OutputStreamWriter writer = new OutputStreamWriter(con.getOutputStream())) {
@@ -911,6 +998,57 @@ public class OpenAiAssistantEngine {
         } catch (IOException e) {
             System.out.println("Failed to delete " + resourceType + ": " + e.getMessage());
             return false;
+        }
+    }
+
+    public String listAssistants(String after, String before, int limit, String order) {
+        StringBuilder urlBuilder = new StringBuilder("https://api.openai.com/v1/assistants?");
+        if (after != null) {
+            urlBuilder.append("after=").append(after).append("&");
+        }
+        if (before != null) {
+            urlBuilder.append("before=").append(before).append("&");
+        }
+        if (limit > 0) {
+            urlBuilder.append("limit=").append(Math.min(limit, 100)).append("&");
+        }
+        if (order != null) {
+            urlBuilder.append("order=").append(order);
+        }
+
+        try {
+            URL obj = new URL(urlBuilder.toString());
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("Authorization", "Bearer " + USER_API_KEY);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("assistants_list", responseStr);
+                return responseStr;
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to list assistants: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to list assistants: " + e.getMessage());
+            return null;
         }
     }
 }

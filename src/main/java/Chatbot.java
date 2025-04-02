@@ -79,9 +79,19 @@ public class Chatbot {
         fileSearch.put("vector_store_ids", List.of(vectorStoreId));
         toolResources.put("file_search", fileSearch);
 
-        boolean updateSuccess = assistantSelfCare.updateAssistant(
+        boolean updateSuccess = assistantSelfCare.modifyAssistant(
                 assistantId,
-                toolResources
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                toolResources,
+                null,
+                null
         );
 
         if (!updateSuccess) {
