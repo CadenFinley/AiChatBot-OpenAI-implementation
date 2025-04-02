@@ -72,7 +72,7 @@ public class OpenAiAssistantEngine {
      */
     public void logResponse(String category, String response) {
         if (response == null) {
-            return; // Don't log null responses
+            return;
         }
 
         if (!responseLog.containsKey(category)) {
@@ -81,8 +81,6 @@ public class OpenAiAssistantEngine {
 
         List<String> categoryResponses = responseLog.get(category);
         categoryResponses.add(response);
-
-        // If we exceed the maximum number of responses, remove the oldest one
         if (categoryResponses.size() > maxResponsesPerCategory) {
             categoryResponses.remove(0);
         }
