@@ -115,6 +115,7 @@ public class Chatbot {
                 if (userInput.isEmpty()) {
                     continue;
                 }
+
                 if (threadId == null) {
                     List<JSONObject> messages = List.of(
                             new JSONObject()
