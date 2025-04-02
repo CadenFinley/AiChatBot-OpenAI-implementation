@@ -122,9 +122,23 @@ public class OpenAiAssistantEngine {
                 con.setRequestMethod("GET");
                 con.setRequestProperty("Authorization", "Bearer " + apiKey);
                 int responseCode = con.getResponseCode();
-                return responseCode == 200;
+                if (responseCode == 200) {
+                    return Boolean.TRUE;
+                } else {
+                    try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                        String inputLine;
+                        StringBuilder errorResponse = new StringBuilder();
+                        while ((inputLine = in.readLine()) != null) {
+                            errorResponse.append(inputLine);
+                        }
+                        System.out.println("Failed to test API key: " + errorResponse.toString());
+                    } catch (IOException ex) {
+                        System.out.println("Failed to read error response: " + ex.getMessage());
+                    }
+                    return Boolean.FALSE;
+                }
             } catch (IOException e) {
-                return false;
+                return Boolean.FALSE;
             }
         });
         try {
