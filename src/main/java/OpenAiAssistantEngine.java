@@ -278,6 +278,62 @@ public class OpenAiAssistantEngine {
         }
     }
 
+    public String modifyVectorStore(String vectorStoreId, JSONObject expiresAfter, Map<String, String> metadata, String name) {
+        String url = "https://api.openai.com/v1/vector_stores/" + vectorStoreId;
+        String apiKey = USER_API_KEY;
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+            con.setDoOutput(true);
+
+            JSONObject body = new JSONObject();
+            if (expiresAfter != null) {
+                body.put("expires_after", expiresAfter);
+            }
+            if (metadata != null && !metadata.isEmpty()) {
+                body.put("metadata", metadata);
+            }
+            if (name != null) {
+                body.put("name", name);
+            }
+
+            try (OutputStreamWriter writer = new OutputStreamWriter(con.getOutputStream())) {
+                writer.write(body.toString());
+                writer.flush();
+            }
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("vector_store_modify", responseStr);
+                return responseStr;
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to modify vector store: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to modify vector store: " + e.getMessage());
+            return null;
+        }
+    }
+
     /*
      * Assistant Management Methods
      */
