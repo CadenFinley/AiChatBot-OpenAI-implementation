@@ -25,7 +25,6 @@ public class Chatbot {
 
         String assistantId = setupAssistant();
         if (assistantId == null) {
-            System.out.println("Failed to set up assistant. Exiting.");
             return;
         }
 
