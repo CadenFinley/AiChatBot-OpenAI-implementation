@@ -14,9 +14,8 @@ public class Chatbot {
 
     private static OpenAiAssistantEngine assistantSelfCare;
     private static final String APIKEY = "you wish haha";
-    private static final File USER_INFO = new File("user_info.txt");
-    private static final File ACU_DATABASE = new File("acu_database.txt");
-    private static final int RUN_TIMEOUT_SECONDS = 60;
+    private static final File USER_INFO_FILE = new File("user_info.txt");
+    private static final File ACU_DATABASE_FILE = new File("acu_database.txt");
 
     public static void main(String[] args) {
         assistantSelfCare = new OpenAiAssistantEngine(APIKEY);
@@ -50,21 +49,21 @@ public class Chatbot {
             return null;
         }
 
-        String fileId = assistantSelfCare.uploadFile(USER_INFO, "assistants");
-        String fileId1 = assistantSelfCare.uploadFile(ACU_DATABASE, "assistants");
+        String userInfoFileID = assistantSelfCare.uploadFile(USER_INFO_FILE, "assistants");
+        String acuDatabaseFileID = assistantSelfCare.uploadFile(ACU_DATABASE_FILE, "assistants");
 
-        if (fileId == null || fileId1 == null) {
+        if (userInfoFileID == null || acuDatabaseFileID == null) {
             System.out.println("Failed to upload one or more files");
             return null;
         }
 
         Map<String, String> fileMetadata = new HashMap<>();
-        fileMetadata.put(fileId, "This fileID is associated with the user info");
-        fileMetadata.put(fileId1, "This fileID is associated with the ACU database");
+        fileMetadata.put(userInfoFileID, "This fileID (user_info.txt) is associated with the user info");
+        fileMetadata.put(acuDatabaseFileID, "This fileID (acu_database.txt) is associated with the ACU database");
 
         String vectorStoreId = assistantSelfCare.createVectorStore(
                 "User Files",
-                Arrays.asList(fileId, fileId1),
+                Arrays.asList(userInfoFileID, acuDatabaseFileID),
                 null,
                 null,
                 fileMetadata
@@ -160,7 +159,7 @@ public class Chatbot {
                     continue;
                 }
 
-                boolean completed = assistantSelfCare.waitForRunCompletion(threadId, runId, RUN_TIMEOUT_SECONDS);
+                boolean completed = assistantSelfCare.waitForRunCompletion(threadId, runId, 60);
 
                 if (!completed) {
                     System.out.println("The assistant encountered an issue. Please try again.");
