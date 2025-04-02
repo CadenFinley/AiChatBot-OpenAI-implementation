@@ -23,6 +23,7 @@ public class AssistantClient {
     private final Map<String, String> toolResources = new HashMap<>();
     private Integer timeout = 30;
     private Integer pollRateMiliSeconds = 1000;
+    private String additionalInstructions;
 
     public AssistantClient(String apiKey) {
         this.engine = new OpenAiAssistantEngine(apiKey);
@@ -76,6 +77,11 @@ public class AssistantClient {
 
     public AssistantClient withPollRate(int milliseconds) {
         this.pollRateMiliSeconds = milliseconds;
+        return this;
+    }
+
+    public AssistantClient withAdditionalInstructions(String instructions) {
+        this.additionalInstructions = instructions;
         return this;
     }
 
@@ -145,6 +151,56 @@ public class AssistantClient {
                 null, // Use assistant's default instructions
                 null, // No additional instructions
                 null, // No additional messages
+                tools.isEmpty() ? null : tools.stream().map(tool -> new JSONObject().put("type", tool)).toList(),
+                metadata.isEmpty() ? null : metadata,
+                temperature,
+                topP,
+                false, // No streaming
+                null, // Default token limits
+                null, // Default token limits
+                null, // Default truncation strategy
+                null, // Default tool choice
+                null, // Default parallel tool calls
+                null // Default response format
+        );
+
+        if (runId == null) {
+            return null;
+        }
+
+        // Wait for the run to complete (timeout from builder)
+        boolean completed = engine.waitForRunCompletion(currentThreadId, runId, timeout, pollRateMiliSeconds);
+        if (!completed) {
+            return null;
+        }
+
+        // Return the messages from this run
+        return engine.listMessages(currentThreadId, runId);
+    }
+
+    /**
+     * Sends multiple messages and waits for the assistant's response.
+     *
+     * @param messages List of user's messages
+     * @return List of assistant's response messages, null if failed
+     */
+    public List<String> sendMessagesAndWait(List<String> messages) {
+        if (currentThreadId == null || currentAssistantId == null) {
+            throw new IllegalStateException("No active conversation. Call startConversation() first.");
+        }
+        for (String msg : messages) {
+            engine.addMessageToThread(currentThreadId, msg);
+        }
+
+        // Create and run with possible additional instructions
+        String runId = engine.createRun(
+                currentThreadId,
+                currentAssistantId,
+                model,
+                reasoningEffort,
+                additionalInstructions,
+                null,
+                null,
                 tools.isEmpty() ? null : tools.stream().map(tool -> new JSONObject().put("type", tool)).toList(),
                 metadata.isEmpty() ? null : metadata,
                 temperature,
