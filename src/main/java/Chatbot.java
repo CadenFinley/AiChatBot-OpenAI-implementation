@@ -32,16 +32,16 @@ public class Chatbot {
 
     private static String setupAssistant() {
         String assistantId = assistantSelfCare.createAssistant(
-                "gpt-4o-mini",
+                "gpt-3.5-turbo",
                 "Personal AI Academic Advisor",
-                null,
+                null, // i dont think this is really needed
                 "You are a real-time chat AI Academic Advisor for Abilene Christian University. Address the student by their first and last name based on the user info provided in the user_info.txt file. Provide information about the student's academic journey, courses, and other academic-related topics.",
-                null,
+                null, //not supported by this specific model
                 List.of("file_search"),
-                null,
-                0.2,
-                0.1,
-                null
+                null, // we will add this later with the vector store
+                0.5,
+                0.5,
+                null // we will add these later
         );
 
         if (assistantId == null) {
