@@ -63,12 +63,8 @@ public class OpenAiAssistantEngine {
         this.maxResponsesPerCategory = maxResponsesPerCategory;
     }
 
-    /**
-     * Logs an API response to the specified category.
-     *
-     * @param category The category to log the response under (e.g., "run",
-     * "assistant")
-     * @param response The response string to log
+    /*
+     * Response Logging Methods
      */
     public void logResponse(String category, String response) {
         if (response == null) {
@@ -86,23 +82,10 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    /**
-     * Retrieves all responses for a specific category.
-     *
-     * @param category The category to get responses for
-     * @return List of response strings, or an empty list if category doesn't
-     * exist
-     */
     public List<String> getResponsesByCategory(String category) {
         return responseLog.getOrDefault(category, new ArrayList<>());
     }
 
-    /**
-     * Gets the most recent response for a specific category.
-     *
-     * @param category The category to get the response for
-     * @return The most recent response string, or null if no responses exist
-     */
     public String getLatestResponse(String category) {
         List<String> responses = getResponsesByCategory(category);
         if (responses.isEmpty()) {
@@ -111,37 +94,20 @@ public class OpenAiAssistantEngine {
         return responses.get(responses.size() - 1);
     }
 
-    /**
-     * Clears all responses for a specific category.
-     *
-     * @param category The category to clear responses for
-     */
     public void clearCategory(String category) {
         responseLog.remove(category);
     }
 
-    /**
-     * Clears all stored responses across all categories.
-     */
     public void clearAllResponses() {
         responseLog.clear();
     }
 
-    /**
-     * Gets all available response categories.
-     *
-     * @return List of category names
-     */
     public List<String> getCategories() {
         return new ArrayList<>(responseLog.keySet());
     }
 
-    /**
-     * Uploads a file to OpenAI's servers for use with assistants.
-     *
-     * @param file The file to upload
-     * @param purpose The purpose of the file (e.g., "assistants")
-     * @return The ID of the uploaded file, or null if the upload failed
+    /*
+     * File Management Methods
      */
     public String uploadFile(File file, String purpose) {
         String url = "https://api.openai.com/v1/files";
@@ -207,18 +173,49 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    /**
-     * Creates a vector store for storing and querying embeddings.
-     *
-     * @param name The name of the vector store
-     * @param fileIds List of file IDs to include in the vector store
-     * @param chunkingStrategy JSON object defining how to chunk the files
-     * @param expiresAfter JSON object defining when the vector store should
-     * expire
-     * @param metadata Additional metadata for the vector store
-     * @return The ID of the created vector store, or null if creation failed
+    public JSONObject retrieveFile(String fileId) {
+        String url = "https://api.openai.com/v1/files/" + fileId;
+        String apiKey = USER_API_KEY;
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Content-Type", "application/json");
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("file_info", responseStr);
+                return new JSONObject(responseStr);
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to retrieve file: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to retrieve file: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /*
+     * Vector Store Methods
      */
-    public String createVectorStore(String name, List<String> fileIds, JSONObject chunkingStrategy, JSONObject expiresAfter, Map<String, String> metadata) {
+    public String createVectorStore(String name, List<String> fileIds, JSONObject chunkingStrategy,
+            JSONObject expiresAfter, Map<String, String> metadata) {
         String url = "https://api.openai.com/v1/vector_stores";
         String apiKey = USER_API_KEY;
         try {
@@ -281,23 +278,12 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    /**
-     * Creates a new assistant with the specified parameters.
-     *
-     * @param model The model to use (e.g., "gpt-4-1106-preview")
-     * @param name Optional name for the assistant
-     * @param description Optional description of the assistant
-     * @param instructions Base instructions for the assistant
-     * @param reasoningEffort Level of reasoning effort (e.g., "auto", "high")
-     * @param toolNames List of tool names to enable (e.g., "code_interpreter",
-     * "file_search")
-     * @param metadata Additional metadata for the assistant
-     * @param temperature Sampling temperature (0-2)
-     * @param topP Top-p sampling parameter
-     * @param toolResources Additional resources for tools
-     * @return The ID of the created assistant, or null if creation failed
+    /*
+     * Assistant Management Methods
      */
-    public String createAssistant(String model, String name, String description, String instructions, String reasoningEffort, List<String> toolNames, Map<String, String> metadata, Double temperature, Double topP, Map<String, String> toolResources) {
+    public String createAssistant(String model, String name, String description, String instructions,
+            String reasoningEffort, List<String> toolNames, Map<String, String> metadata,
+            Double temperature, Double topP, Map<String, String> toolResources) {
         String url = "https://api.openai.com/v1/assistants";
         String apiKey = USER_API_KEY;
         try {
@@ -379,13 +365,6 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    /**
-     * Retrieves information about a specific assistant.
-     *
-     * @param assistantId The ID of the assistant to retrieve
-     * @return JSON string containing assistant details, or null if retrieval
-     * failed
-     */
     public String retrieveAssistant(String assistantId) {
         String url = "https://api.openai.com/v1/assistants/" + assistantId;
         String apiKey = USER_API_KEY;
@@ -425,15 +404,145 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    /**
-     * Creates a new thread for conversation.
-     *
-     * @param messages Optional initial messages for the thread
-     * @param toolResources Additional resources for tools
-     * @param metadata Additional metadata for the thread
-     * @return The ID of the created thread, or null if creation failed
+    public boolean modifyAssistant(String assistantId, String description, String instructions,
+            Map<String, String> metadata, String model, String name, String reasoningEffort,
+            JSONObject responseFormat, Double temperature, Map<String, Object> toolResources,
+            List<JSONObject> tools, Double topP) {
+        String url = "https://api.openai.com/v1/assistants/" + assistantId;
+        String apiKey = USER_API_KEY;
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+            con.setDoOutput(true);
+
+            JSONObject body = new JSONObject();
+            if (description != null) {
+                body.put("description", description);
+            }
+            if (instructions != null) {
+                body.put("instructions", instructions);
+            }
+            if (metadata != null && !metadata.isEmpty()) {
+                body.put("metadata", metadata);
+            }
+            if (model != null) {
+                body.put("model", model);
+            }
+            if (name != null) {
+                body.put("name", name);
+            }
+            if (reasoningEffort != null) {
+                body.put("reasoning_effort", reasoningEffort);
+            }
+            if (responseFormat != null) {
+                body.put("response_format", responseFormat);
+            }
+            if (temperature != null) {
+                body.put("temperature", temperature);
+            }
+            if (toolResources != null && !toolResources.isEmpty()) {
+                body.put("tool_resources", new JSONObject(toolResources));
+            }
+            if (tools != null && !tools.isEmpty()) {
+                body.put("tools", tools);
+            }
+            if (topP != null) {
+                body.put("top_p", topP);
+            }
+
+            try (OutputStreamWriter writer = new OutputStreamWriter(con.getOutputStream())) {
+                writer.write(body.toString());
+                writer.flush();
+            }
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("assistant_update", responseStr);
+                return true;
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to update assistant: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return false;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to update assistant: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public String listAssistants(String after, String before, int limit, String order) {
+        StringBuilder urlBuilder = new StringBuilder("https://api.openai.com/v1/assistants?");
+        if (after != null) {
+            urlBuilder.append("after=").append(after).append("&");
+        }
+        if (before != null) {
+            urlBuilder.append("before=").append(before).append("&");
+        }
+        if (limit > 0) {
+            urlBuilder.append("limit=").append(Math.min(limit, 100)).append("&");
+        }
+        if (order != null) {
+            urlBuilder.append("order=").append(order);
+        }
+
+        try {
+            URL obj = new URL(urlBuilder.toString());
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("Authorization", "Bearer " + USER_API_KEY);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("assistants_list", responseStr);
+                return responseStr;
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to list assistants: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to list assistants: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /*
+     * Thread Management Methods
      */
-    public String createThread(List<JSONObject> messages, Map<String, String> toolResources, Map<String, String> metadata) {
+    public String createThread(List<JSONObject> messages, Map<String, String> toolResources,
+            Map<String, String> metadata) {
         String url = "https://api.openai.com/v1/threads";
         String apiKey = USER_API_KEY;
         try {
@@ -490,30 +599,115 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    /**
-     * Creates a new run within a thread.
-     *
-     * @param threadId The ID of the thread
-     * @param assistantId The ID of the assistant to use
-     * @param model Optional override for the model
-     * @param reasoningEffort Optional override for reasoning effort
-     * @param instructions Optional override for instructions
-     * @param additionalInstructions Additional one-time instructions
-     * @param additionalMessages Additional context messages
-     * @param tools List of tools to use
-     * @param metadata Additional metadata for the run
-     * @param temperature Optional override for temperature
-     * @param topP Optional override for top-p
-     * @param stream Whether to stream the response
-     * @param maxPromptTokens Maximum tokens for the prompt
-     * @param maxCompletionTokens Maximum tokens for the completion
-     * @param truncationStrategy How to truncate if needed
-     * @param toolChoice How to choose between tools
-     * @param parallelToolCalls Whether to allow parallel tool calls
-     * @param responseFormat Format for the response
-     * @return The ID of the created run, or null if creation failed
+    public String addMessageToThread(String threadId, String content) {
+        String url = "https://api.openai.com/v1/threads/" + threadId + "/messages";
+        String apiKey = USER_API_KEY;
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+            con.setDoOutput(true);
+
+            JSONObject body = new JSONObject();
+            body.put("role", "user");
+            body.put("content", content);
+
+            try (OutputStreamWriter writer = new OutputStreamWriter(con.getOutputStream())) {
+                writer.write(body.toString());
+                writer.flush();
+            }
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("message_add", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
+                return jsonResponse.getString("id");
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to add message: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to add message: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public List<String> listMessages(String threadId, String runId) {
+        String url = "https://api.openai.com/v1/threads/" + threadId + "/messages";
+        String apiKey = USER_API_KEY;
+        try {
+            URL obj = new URL(url + "?run_id=" + runId); // Add run_id as a query parameter
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("messages", responseStr);
+                JSONObject jsonResponse = new JSONObject(responseStr);
+                List<String> messages = new ArrayList<>();
+                for (Object messageObj : jsonResponse.getJSONArray("data")) {
+                    JSONObject message = (JSONObject) messageObj;
+                    for (Object contentObj : message.getJSONArray("content")) {
+                        JSONObject content = (JSONObject) contentObj;
+                        if (content.getString("type").equals("text")) {
+                            messages.add(content.getJSONObject("text").getString("value"));
+                        }
+                    }
+                }
+                return messages;
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to list messages: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to list messages: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /*
+     * Run Management Methods
      */
-    public String createRun(String threadId, String assistantId, String model, String reasoningEffort, String instructions, String additionalInstructions, List<JSONObject> additionalMessages, List<JSONObject> tools, Map<String, String> metadata, Double temperature, Double topP, Boolean stream, Integer maxPromptTokens, Integer maxCompletionTokens, JSONObject truncationStrategy, JSONObject toolChoice, Boolean parallelToolCalls, JSONObject responseFormat) {
+    public String createRun(String threadId, String assistantId, String model, String reasoningEffort,
+            String instructions, String additionalInstructions, List<JSONObject> additionalMessages,
+            List<JSONObject> tools, Map<String, String> metadata, Double temperature, Double topP,
+            Boolean stream, Integer maxPromptTokens, Integer maxCompletionTokens,
+            JSONObject truncationStrategy, JSONObject toolChoice, Boolean parallelToolCalls,
+            JSONObject responseFormat) {
         String url = "https://api.openai.com/v1/threads/" + threadId + "/runs";
         String apiKey = USER_API_KEY;
         try {
@@ -610,13 +804,6 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    /**
-     * Retrieves the status and details of a run.
-     *
-     * @param threadId The ID of the thread
-     * @param runId The ID of the run
-     * @return JSON string containing run details, or null if retrieval failed
-     */
     public String retrieveRun(String threadId, String runId) {
         String url = "https://api.openai.com/v1/threads/" + threadId + "/runs/" + runId;
         String apiKey = USER_API_KEY;
@@ -656,271 +843,6 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    /**
-     * Lists all messages in a thread for a specific run.
-     *
-     * @param threadId The ID of the thread
-     * @param runId The ID of the run
-     * @return List of message contents, or null if retrieval failed
-     */
-    public List<String> listMessages(String threadId, String runId) {
-        String url = "https://api.openai.com/v1/threads/" + threadId + "/messages";
-        String apiKey = USER_API_KEY;
-        try {
-            URL obj = new URL(url + "?run_id=" + runId); // Add run_id as a query parameter
-            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("GET");
-            con.setRequestProperty("Authorization", "Bearer " + apiKey);
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
-
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
-                String inputLine;
-                StringBuilder response = new StringBuilder();
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                String responseStr = response.toString();
-                logResponse("messages", responseStr);
-                JSONObject jsonResponse = new JSONObject(responseStr);
-                List<String> messages = new ArrayList<>();
-                for (Object messageObj : jsonResponse.getJSONArray("data")) {
-                    JSONObject message = (JSONObject) messageObj;
-                    for (Object contentObj : message.getJSONArray("content")) {
-                        JSONObject content = (JSONObject) contentObj;
-                        if (content.getString("type").equals("text")) {
-                            messages.add(content.getJSONObject("text").getString("value"));
-                        }
-                    }
-                }
-                return messages;
-            } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to list messages: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
-                return null;
-            }
-        } catch (IOException e) {
-            System.out.println("Failed to list messages: " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Retrieves information about an uploaded file.
-     *
-     * @param fileId The ID of the file to retrieve
-     * @return JSON object containing file details, or null if retrieval failed
-     */
-    public JSONObject retrieveFile(String fileId) {
-        String url = "https://api.openai.com/v1/files/" + fileId;
-        String apiKey = USER_API_KEY;
-        try {
-            URL obj = new URL(url);
-            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("GET");
-            con.setRequestProperty("Authorization", "Bearer " + apiKey);
-            con.setRequestProperty("Content-Type", "application/json");
-
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
-                String inputLine;
-                StringBuilder response = new StringBuilder();
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                String responseStr = response.toString();
-                logResponse("file_info", responseStr);
-                return new JSONObject(responseStr);
-            } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to retrieve file: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
-                return null;
-            }
-        } catch (IOException e) {
-            System.out.println("Failed to retrieve file: " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Updates an existing assistant's properties.
-     *
-     * @param assistantId The ID of the assistant to update
-     * @param description Optional description of the assistant (max 512 chars)
-     * @param instructions Optional system instructions (max 256,000 chars)
-     * @param metadata Optional key-value pairs for additional information
-     * @param model Optional ID of the model to use
-     * @param name Optional name for the assistant (max 256 chars)
-     * @param reasoningEffort Optional effort level for reasoning
-     * (low/medium/high)
-     * @param responseFormat Optional format specification for model output
-     * @param temperature Optional sampling temperature (0-2)
-     * @param toolResources Optional resources used by assistant's tools
-     * @param tools Optional list of tools to enable
-     * @param topP Optional nucleus sampling parameter
-     * @return true if update was successful, false otherwise
-     */
-    public boolean modifyAssistant(String assistantId, String description, String instructions, Map<String, String> metadata, String model, String name, String reasoningEffort, JSONObject responseFormat, Double temperature, Map<String, Object> toolResources, List<JSONObject> tools, Double topP) {
-        String url = "https://api.openai.com/v1/assistants/" + assistantId;
-        String apiKey = USER_API_KEY;
-        try {
-            URL obj = new URL(url);
-            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("POST");
-            con.setRequestProperty("Authorization", "Bearer " + apiKey);
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
-            con.setDoOutput(true);
-
-            JSONObject body = new JSONObject();
-            if (description != null) {
-                body.put("description", description);
-            }
-            if (instructions != null) {
-                body.put("instructions", instructions);
-            }
-            if (metadata != null && !metadata.isEmpty()) {
-                body.put("metadata", metadata);
-            }
-            if (model != null) {
-                body.put("model", model);
-            }
-            if (name != null) {
-                body.put("name", name);
-            }
-            if (reasoningEffort != null) {
-                body.put("reasoning_effort", reasoningEffort);
-            }
-            if (responseFormat != null) {
-                body.put("response_format", responseFormat);
-            }
-            if (temperature != null) {
-                body.put("temperature", temperature);
-            }
-            if (toolResources != null && !toolResources.isEmpty()) {
-                body.put("tool_resources", new JSONObject(toolResources));
-            }
-            if (tools != null && !tools.isEmpty()) {
-                body.put("tools", tools);
-            }
-            if (topP != null) {
-                body.put("top_p", topP);
-            }
-
-            try (OutputStreamWriter writer = new OutputStreamWriter(con.getOutputStream())) {
-                writer.write(body.toString());
-                writer.flush();
-            }
-
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
-                String inputLine;
-                StringBuilder response = new StringBuilder();
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                String responseStr = response.toString();
-                logResponse("assistant_update", responseStr);
-                return true;
-            } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to update assistant: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
-                return false;
-            }
-        } catch (IOException e) {
-            System.out.println("Failed to update assistant: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Adds a new message to an existing thread.
-     *
-     * @param threadId The ID of the thread
-     * @param content The content of the message
-     * @return The ID of the created message, or null if creation failed
-     */
-    public String addMessageToThread(String threadId, String content) {
-        String url = "https://api.openai.com/v1/threads/" + threadId + "/messages";
-        String apiKey = USER_API_KEY;
-        try {
-            URL obj = new URL(url);
-            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("POST");
-            con.setRequestProperty("Authorization", "Bearer " + apiKey);
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
-            con.setDoOutput(true);
-
-            JSONObject body = new JSONObject();
-            body.put("role", "user");
-            body.put("content", content);
-
-            try (OutputStreamWriter writer = new OutputStreamWriter(con.getOutputStream())) {
-                writer.write(body.toString());
-                writer.flush();
-            }
-
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
-                String inputLine;
-                StringBuilder response = new StringBuilder();
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                String responseStr = response.toString();
-                logResponse("message_add", responseStr);
-                JSONObject jsonResponse = new JSONObject(responseStr);
-                return jsonResponse.getString("id");
-            } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to add message: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
-                return null;
-            }
-        } catch (IOException e) {
-            System.out.println("Failed to add message: " + e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * Waits for a run to complete, polling its status at regular intervals.
-     *
-     * @param threadId The ID of the thread
-     * @param runId The ID of the run
-     * @param timeoutSeconds Maximum time to wait in seconds
-     * @return true if run completed successfully, false if it failed or timed
-     * out
-     */
     public boolean waitForRunCompletion(String threadId, String runId, int timeoutSeconds) {
         long startTime = System.currentTimeMillis();
         long timeoutMillis = timeoutSeconds * 1000L;
@@ -958,13 +880,8 @@ public class OpenAiAssistantEngine {
         return false;
     }
 
-    /**
-     * Deletes a resource (assistant, thread, message, or file) from OpenAI.
-     *
-     * @param resourceType The type of resource to delete (e.g., "assistants",
-     * "threads", "files")
-     * @param resourceId The ID of the resource to delete
-     * @return true if deletion was successful, false otherwise
+    /*
+     * Resource Management Methods
      */
     public boolean deleteResource(String resourceType, String resourceId) {
         String url = "https://api.openai.com/v1/" + resourceType + "/" + resourceId;
@@ -998,57 +915,6 @@ public class OpenAiAssistantEngine {
         } catch (IOException e) {
             System.out.println("Failed to delete " + resourceType + ": " + e.getMessage());
             return false;
-        }
-    }
-
-    public String listAssistants(String after, String before, int limit, String order) {
-        StringBuilder urlBuilder = new StringBuilder("https://api.openai.com/v1/assistants?");
-        if (after != null) {
-            urlBuilder.append("after=").append(after).append("&");
-        }
-        if (before != null) {
-            urlBuilder.append("before=").append(before).append("&");
-        }
-        if (limit > 0) {
-            urlBuilder.append("limit=").append(Math.min(limit, 100)).append("&");
-        }
-        if (order != null) {
-            urlBuilder.append("order=").append(order);
-        }
-
-        try {
-            URL obj = new URL(urlBuilder.toString());
-            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("GET");
-            con.setRequestProperty("Authorization", "Bearer " + USER_API_KEY);
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
-
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
-                String inputLine;
-                StringBuilder response = new StringBuilder();
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                String responseStr = response.toString();
-                logResponse("assistants_list", responseStr);
-                return responseStr;
-            } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to list assistants: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
-                return null;
-            }
-        } catch (IOException e) {
-            System.out.println("Failed to list assistants: " + e.getMessage());
-            return null;
         }
     }
 }
