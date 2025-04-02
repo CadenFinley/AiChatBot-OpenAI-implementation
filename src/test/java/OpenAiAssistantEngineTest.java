@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.json.JSONObject;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -77,5 +78,104 @@ class OpenAiAssistantEngineTest {
         assertNotNull(testThreadId, "Thread ID must be available");
         String messageId = engine.addMessageToThread(testThreadId, "Test message");
         assertNotNull(messageId, "Message addition should return a valid ID");
+    }
+
+    @Test
+    @Order(6)
+    void testRetrieveAssistant() {
+        assertNotNull(testAssistantId, "Assistant ID must be available");
+        String assistantInfo = engine.retrieveAssistant(testAssistantId);
+        assertNotNull(assistantInfo, "Retrieved assistant info should not be null");
+    }
+
+    @Test
+    @Order(7)
+    void testListMessages() {
+        assertNotNull(testThreadId, "Thread ID must be available");
+        // List messages without run_id parameter
+        List<String> messages = engine.listMessages(testThreadId, null);
+        assertNotNull(messages, "Messages list should not be null");
+    }
+
+    @Test
+    @Order(8)
+    void testCreateAndRetrieveRun() {
+        assertNotNull(testThreadId, "Thread ID must be available");
+        assertNotNull(testAssistantId, "Assistant ID must be available");
+
+        // Cancel any existing runs first
+        String runStatus = engine.retrieveRunStatus(testThreadId);
+        if (runStatus != null && runStatus.contains("\"status\":\"in_progress\"")) {
+            JSONObject statusObj = new JSONObject(runStatus);
+            String existingRunId = statusObj.getString("id");
+            engine.cancelRun(testThreadId, existingRunId);
+        }
+
+        String runId = engine.createRun(testThreadId, testAssistantId, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null);
+        assertNotNull(runId, "Run creation should return a valid ID");
+
+        String runInfo = engine.retrieveRun(testThreadId, runId);
+        assertNotNull(runInfo, "Retrieved run info should not be null");
+    }
+
+    @Test
+    @Order(9)
+    void testWaitForRunCompletion() {
+        assertNotNull(testThreadId, "Thread ID must be available");
+        assertNotNull(testAssistantId, "Assistant ID must be available");
+
+        // Cancel any existing runs first
+        String runStatus = engine.retrieveRunStatus(testThreadId);
+        if (runStatus != null && runStatus.contains("\"status\":\"in_progress\"")) {
+            JSONObject statusObj = new JSONObject(runStatus);
+            String existingRunId = statusObj.getString("id");
+            engine.cancelRun(testThreadId, existingRunId);
+        }
+
+        String runId = engine.createRun(testThreadId, testAssistantId, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null);
+        assertNotNull(runId, "Run creation should return a valid ID");
+
+        boolean completed = engine.waitForRunCompletion(testThreadId, runId, 30, 1000);
+        assertTrue(completed, "Run should complete within timeout");
+    }
+
+    @Test
+    @Order(10)
+    void testCancelRun() {
+        assertNotNull(testThreadId, "Thread ID must be available");
+        assertNotNull(testAssistantId, "Assistant ID must be available");
+
+        // Cancel any existing runs first
+        String runStatus = engine.retrieveRunStatus(testThreadId);
+        if (runStatus != null && runStatus.contains("\"status\":\"in_progress\"")) {
+            JSONObject statusObj = new JSONObject(runStatus);
+            String existingRunId = statusObj.getString("id");
+            engine.cancelRun(testThreadId, existingRunId);
+        }
+
+        String runId = engine.createRun(testThreadId, testAssistantId, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null);
+        assertNotNull(runId, "Run creation should return a valid ID");
+
+        String cancelResponse = engine.cancelRun(testThreadId, runId);
+        assertNotNull(cancelResponse, "Cancel run should return a response");
+    }
+
+    @Test
+    @Order(11)
+    void testResourceDeletion() {
+        // Test deleting thread
+        assertTrue(engine.deleteResource("threads", testThreadId), "Thread deletion should succeed");
+
+        // Test deleting assistant
+        assertTrue(engine.deleteResource("assistants", testAssistantId), "Assistant deletion should succeed");
+
+        // Test deleting file
+        assertTrue(engine.deleteResource("files", testFileId), "File deletion should succeed");
     }
 }

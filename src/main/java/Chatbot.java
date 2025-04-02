@@ -12,13 +12,13 @@ import org.json.JSONObject;
 
 public class Chatbot {
 
-    private static OpenAiAssistantEngine assistantSelfCare;
+    private static OpenAiAssistantEngine assistant;
     private static final String APIKEY = System.getenv("OPENAI_API_KEY");
     private static final File USER_INFO_FILE = new File("user_info.txt");
     private static final File ACU_DATABASE_FILE = new File("acu_database.txt");
 
     public static void main(String[] args) {
-        assistantSelfCare = new OpenAiAssistantEngine(APIKEY);
+        assistant = new OpenAiAssistantEngine(APIKEY);
         System.out.println("-------------------------");
         System.out.println("Setting up AI Academic Advisor...");
 
@@ -31,7 +31,7 @@ public class Chatbot {
     }
 
     private static String setupAssistant() {
-        String assistantId = assistantSelfCare.createAssistant(
+        String assistantId = assistant.createAssistant(
                 "gpt-3.5-turbo",
                 "Personal AI Academic Advisor",
                 null, // i dont think this is really needed
@@ -49,8 +49,8 @@ public class Chatbot {
             return null;
         }
 
-        String userInfoFileID = assistantSelfCare.uploadFile(USER_INFO_FILE, "assistants");
-        String acuDatabaseFileID = assistantSelfCare.uploadFile(ACU_DATABASE_FILE, "assistants");
+        String userInfoFileID = assistant.uploadFile(USER_INFO_FILE, "assistants");
+        String acuDatabaseFileID = assistant.uploadFile(ACU_DATABASE_FILE, "assistants");
 
         if (userInfoFileID == null || acuDatabaseFileID == null) {
             System.out.println("Failed to upload one or more files");
@@ -61,7 +61,7 @@ public class Chatbot {
         fileMetadata.put(userInfoFileID, "This fileID (user_info.txt) is associated with the user info");
         fileMetadata.put(acuDatabaseFileID, "This fileID (acu_database.txt) is associated with the ACU database");
 
-        String vectorStoreId = assistantSelfCare.createVectorStore(
+        String vectorStoreId = assistant.createVectorStore(
                 "User Files",
                 Arrays.asList(userInfoFileID, acuDatabaseFileID),
                 null,
@@ -79,7 +79,7 @@ public class Chatbot {
         fileSearch.put("vector_store_ids", List.of(vectorStoreId));
         toolResources.put("file_search", fileSearch);
 
-        boolean updateSuccess = assistantSelfCare.modifyAssistant(
+        boolean updateSuccess = assistant.modifyAssistant(
                 assistantId,
                 null,
                 null,
@@ -130,20 +130,20 @@ public class Chatbot {
                                     .put("role", "user")
                                     .put("content", userInput)
                     );
-                    threadId = assistantSelfCare.createThread(messages, null, null);
+                    threadId = assistant.createThread(messages, null, null);
                     if (threadId == null) {
                         System.out.println("Failed to create thread. Please try again.");
                         continue;
                     }
                 } else {
-                    String messageId = assistantSelfCare.addMessageToThread(threadId, userInput);
+                    String messageId = assistant.addMessageToThread(threadId, userInput);
                     if (messageId == null) {
                         System.out.println("Failed to send message. Please try again.");
                         continue;
                     }
                 }
 
-                String runId = assistantSelfCare.createRun(
+                String runId = assistant.createRun(
                         threadId,
                         assistantId,
                         null,
@@ -169,13 +169,13 @@ public class Chatbot {
                     continue;
                 }
 
-                boolean completed = assistantSelfCare.waitForRunCompletion(threadId, runId, 60, 1000);
+                boolean completed = assistant.waitForRunCompletion(threadId, runId, 60, 1000);
 
                 if (!completed) {
                     System.out.println("The assistant encountered an issue. Please try again.");
                     continue;
                 }
-                List<String> retrievedMessages = assistantSelfCare.listMessages(threadId, runId);
+                List<String> retrievedMessages = assistant.listMessages(threadId, runId);
                 if (retrievedMessages != null && !retrievedMessages.isEmpty()) {
                     System.out.println("\nAdvisor: " + retrievedMessages.get(0));
                 } else {
@@ -184,7 +184,7 @@ public class Chatbot {
             }
 
             if (threadId != null) {
-                assistantSelfCare.deleteResource("threads", threadId);
+                assistant.deleteResource("threads", threadId);
             }
 
         } catch (IOException e) {

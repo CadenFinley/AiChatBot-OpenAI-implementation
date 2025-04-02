@@ -706,13 +706,16 @@ public class OpenAiAssistantEngine {
     }
 
     public List<String> listMessages(String threadId, String runId) {
-        String url = "https://api.openai.com/v1/threads/" + threadId + "/messages";
-        String apiKey = USER_API_KEY;
+        StringBuilder urlBuilder = new StringBuilder("https://api.openai.com/v1/threads/" + threadId + "/messages");
+        if (runId != null) {
+            urlBuilder.append("?run_id=").append(runId);
+        }
+
         try {
-            URL obj = new URL(url + "?run_id=" + runId); // Add run_id as a query parameter
+            URL obj = new URL(urlBuilder.toString());
             HttpURLConnection con = (HttpURLConnection) obj.openConnection();
             con.setRequestMethod("GET");
-            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Authorization", "Bearer " + USER_API_KEY);
             con.setRequestProperty("Content-Type", "application/json");
             con.setRequestProperty("OpenAI-Beta", "assistants=v2");
 
@@ -895,6 +898,36 @@ public class OpenAiAssistantEngine {
             }
         } catch (IOException e) {
             System.out.println("Failed to retrieve run: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public String retrieveRunStatus(String threadId) {
+        String url = "https://api.openai.com/v1/threads/" + threadId + "/runs";
+        String apiKey = USER_API_KEY;
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                JSONObject jsonResponse = new JSONObject(responseStr);
+                if (jsonResponse.getJSONArray("data").length() > 0) {
+                    return jsonResponse.getJSONArray("data").getJSONObject(0).toString();
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to retrieve run status: " + e.getMessage());
             return null;
         }
     }
