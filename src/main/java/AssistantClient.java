@@ -22,6 +22,7 @@ public class AssistantClient {
     private Double topP;
     private final Map<String, String> toolResources = new HashMap<>();
     private Integer timeout = 30;
+    private Integer pollRateMiliSeconds = 1000;
 
     public AssistantClient(String apiKey) {
         this.engine = new OpenAiAssistantEngine(apiKey);
@@ -70,6 +71,11 @@ public class AssistantClient {
 
     public AssistantClient withTimeout(int seconds) {
         this.timeout = seconds;
+        return this;
+    }
+
+    public AssistantClient withPollRate(int milliseconds) {
+        this.pollRateMiliSeconds = milliseconds;
         return this;
     }
 
@@ -157,7 +163,7 @@ public class AssistantClient {
         }
 
         // Wait for the run to complete (timeout from builder)
-        boolean completed = engine.waitForRunCompletion(currentThreadId, runId, timeout);
+        boolean completed = engine.waitForRunCompletion(currentThreadId, runId, timeout, pollRateMiliSeconds);
         if (!completed) {
             return null;
         }

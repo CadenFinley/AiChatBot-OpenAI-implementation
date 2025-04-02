@@ -899,7 +899,7 @@ public class OpenAiAssistantEngine {
         }
     }
 
-    public boolean waitForRunCompletion(String threadId, String runId, int timeoutSeconds) {
+    public boolean waitForRunCompletion(String threadId, String runId, int timeoutSeconds, int pollIntervalMiliSeconds) {
         long startTime = System.currentTimeMillis();
         long timeoutMillis = timeoutSeconds * 1000L;
 
@@ -924,7 +924,7 @@ public class OpenAiAssistantEngine {
             }
 
             try {
-                Thread.sleep(1000); // Poll every second
+                Thread.sleep(pollIntervalMiliSeconds); // Poll every second
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 System.out.println("Polling interrupted: " + e.getMessage());
@@ -934,6 +934,45 @@ public class OpenAiAssistantEngine {
 
         System.out.println("Run timed out after " + timeoutSeconds + " seconds");
         return false;
+    }
+
+    public String cancelRun(String threadId, String runId) {
+        String url = "https://api.openai.com/v1/threads/" + threadId + "/runs/" + runId + "/cancel";
+        String apiKey = USER_API_KEY;
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Authorization", "Bearer " + apiKey);
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("OpenAI-Beta", "assistants=v2");
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                String responseStr = response.toString();
+                logResponse("run_cancel", responseStr);
+                return responseStr;
+            } catch (IOException e) {
+                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+                    String inputLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                    System.out.println("Failed to cancel run: " + errorResponse.toString());
+                } catch (IOException ex) {
+                    System.out.println("Failed to read error response: " + ex.getMessage());
+                }
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to cancel run: " + e.getMessage());
+            return null;
+        }
     }
 
     /*

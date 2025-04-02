@@ -169,7 +169,7 @@ public class Chatbot {
                     continue;
                 }
 
-                boolean completed = assistantSelfCare.waitForRunCompletion(threadId, runId, 60);
+                boolean completed = assistantSelfCare.waitForRunCompletion(threadId, runId, 60, 1000);
 
                 if (!completed) {
                     System.out.println("The assistant encountered an issue. Please try again.");
