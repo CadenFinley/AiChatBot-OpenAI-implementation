@@ -127,7 +127,6 @@ public class Chatbot {
                         continue;
                     }
                 } else {
-                    // Add message to existing thread
                     String messageId = assistantSelfCare.addMessageToThread(threadId, userInput);
                     if (messageId == null) {
                         System.out.println("Failed to send message. Please try again.");
