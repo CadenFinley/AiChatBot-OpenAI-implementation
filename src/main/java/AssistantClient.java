@@ -213,4 +213,8 @@ public class AssistantClient {
     public String getCurrentAssistantId() {
         return currentAssistantId;
     }
+
+    public OpenAiAssistantEngine getEngine() {
+        return engine;
+    }
 }
