@@ -35,7 +35,7 @@ public class Chatbot {
                 "gpt-4o-mini",
                 "Personal AI Academic Advisor",
                 null,
-                "You are a real-time chat AI Academic Advisor for Abilene Christian University. Address the student by their first and last name based on the user info provided. Provide information about the student's academic journey, courses, and other academic-related topics. Please adress the student by their first and last name from the user info provided.",
+                "You are a real-time chat AI Academic Advisor for Abilene Christian University. Address the student by their first and last name based on the user info provided in the user_info.txt file. Provide information about the student's academic journey, courses, and other academic-related topics.",
                 null,
                 List.of("file_search"),
                 null,
