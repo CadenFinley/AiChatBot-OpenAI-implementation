@@ -22,25 +22,30 @@ public class Chatbot {
         System.out.println("-------------------------");
         System.out.println("Setting up AI Academic Advisor...");
 
+        //OpenAiAssistantEngine.testAPIKey("hola");
+        OpenAiAssistantEngine.testAPIKey(APIKEY);
+
         String assistantId = setupAssistant();
         if (assistantId == null) {
             return;
         }
 
         startInteractiveChat(assistantId);
+
+        assistant.deleteResource("assistants", assistantId);
     }
 
     private static String setupAssistant() {
         String assistantId = assistant.createAssistant(
-                "gpt-3.5-turbo",
+                "gpt-4o",
                 "Personal AI Academic Advisor",
                 null, // i dont think this is really needed
                 "You are a real-time chat AI Academic Advisor for Abilene Christian University. Address the student by their first and last name based on the user info provided in the user_info.txt file. Provide information about the student's academic journey, courses, and other academic-related topics.",
                 null, //not supported by this specific model
                 List.of("file_search"),
                 null, // we will add this later with the vector store
-                0.5,
-                0.5,
+                0.1,
+                0.1,
                 null // we will add these later
         );
 
