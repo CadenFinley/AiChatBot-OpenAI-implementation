@@ -112,6 +112,46 @@ public class OpenAiAssistantEngine {
         return new ArrayList<>(responseLog.keySet());
     }
 
+    private void handleErrorResponse(HttpURLConnection con) throws IOException {
+        int responseCode = con.getResponseCode();
+        String errorMessage;
+        switch (responseCode) {
+            case 400 ->
+                errorMessage = "Bad Request: The server could not understand the request due to invalid syntax.";
+            case 401 ->
+                errorMessage = "Unauthorized: The API key is invalid or missing.";
+            case 403 ->
+                errorMessage = "Forbidden: You do not have permission to access this resource.";
+            case 404 ->
+                errorMessage = "Not Found: The requested resource could not be found.";
+            case 429 ->
+                errorMessage = "Too Many Requests: You have exceeded the rate limit.";
+            case 500 ->
+                errorMessage = "Internal Server Error: The server encountered an error and could not complete your request.";
+            case 502 ->
+                errorMessage = "Bad Gateway: The server received an invalid response from the upstream server.";
+            case 503 ->
+                errorMessage = "Service Unavailable: The server is not ready to handle the request.";
+            case 504 ->
+                errorMessage = "Gateway Timeout: The server did not receive a timely response from the upstream server.";
+            default ->
+                errorMessage = "Unexpected Error: Received HTTP response code " + responseCode;
+        }
+
+        try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
+            StringBuilder errorResponse = new StringBuilder();
+            String inputLine;
+            while ((inputLine = errorReader.readLine()) != null) {
+                errorResponse.append(inputLine);
+            }
+            errorMessage += "\nDetails: " + errorResponse.toString();
+        } catch (IOException ex) {
+            errorMessage += "\nFailed to read error details: " + ex.getMessage();
+        }
+
+        System.out.println(errorMessage);
+    }
+
     public static boolean testAPIKey(String apiKey) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Future<Boolean> future = executor.submit(() -> {
@@ -125,41 +165,11 @@ public class OpenAiAssistantEngine {
                 if (responseCode == 200) {
                     return Boolean.TRUE;
                 } else {
-                    switch (responseCode) {
-                        case 401 ->
-                            System.out.println("Invalid API key.");
-                        case 403 ->
-                            System.out.println("API key is not authorized.");
-                        case 429 ->
-                            System.out.println("Rate limit exceeded.");
-                        case 400 ->
-                            System.out.println("Bad request.");
-                        case 404 ->
-                            System.out.println("Resource not found.");
-                        case 500 ->
-                            System.out.println("Internal server error.");
-                        case 503 ->
-                            System.out.println("Service unavailable.");
-                        case 504 ->
-                            System.out.println("Gateway timeout.");
-                        case 502 ->
-                            System.out.println("Bad gateway.");
-                        default ->
-                            System.out.println("Unexpected response code: " + responseCode);
-                    }
-                    try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                        String inputLine;
-                        StringBuilder errorResponse = new StringBuilder();
-                        while ((inputLine = in.readLine()) != null) {
-                            errorResponse.append(inputLine);
-                        }
-                        System.out.println(errorResponse.toString());
-                    } catch (IOException ex) {
-                        System.out.println("Failed to read error response: " + ex.getMessage());
-                    }
+                    new OpenAiAssistantEngine(apiKey).handleErrorResponse(con);
                     return Boolean.FALSE;
                 }
             } catch (IOException e) {
+                System.out.println("Failed to test API key: " + e.getMessage());
                 return Boolean.FALSE;
             }
         });
@@ -224,16 +234,7 @@ public class OpenAiAssistantEngine {
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to upload file: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -262,16 +263,7 @@ public class OpenAiAssistantEngine {
                 logResponse("file_info", responseStr);
                 return new JSONObject(responseStr);
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to retrieve file: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -329,16 +321,7 @@ public class OpenAiAssistantEngine {
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to create vector store: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException | JSONException e) {
@@ -385,16 +368,7 @@ public class OpenAiAssistantEngine {
                 logResponse("vector_store_modify", responseStr);
                 return responseStr;
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to modify vector store: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -472,16 +446,7 @@ public class OpenAiAssistantEngine {
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to create assistant: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException | JSONException e) {
@@ -511,16 +476,7 @@ public class OpenAiAssistantEngine {
                 logResponse("assistant_retrieve", responseStr);
                 return responseStr;
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to retrieve assistant: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -594,16 +550,7 @@ public class OpenAiAssistantEngine {
                 logResponse("assistant_update", responseStr);
                 return true;
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to update assistant: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return false;
             }
         } catch (IOException e) {
@@ -645,16 +592,7 @@ public class OpenAiAssistantEngine {
                 logResponse("assistants_list", responseStr);
                 return responseStr;
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to list assistants: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -706,16 +644,7 @@ public class OpenAiAssistantEngine {
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to create thread: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException | JSONException e) {
@@ -756,16 +685,7 @@ public class OpenAiAssistantEngine {
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to add message: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -809,16 +729,7 @@ public class OpenAiAssistantEngine {
                 }
                 return messages;
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to list messages: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -914,16 +825,7 @@ public class OpenAiAssistantEngine {
                 JSONObject jsonResponse = new JSONObject(responseStr);
                 return jsonResponse.getString("id");
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to create run: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException | JSONException e) {
@@ -953,16 +855,7 @@ public class OpenAiAssistantEngine {
                 logResponse("run_status", responseStr);
                 return responseStr;
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to retrieve run: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -993,6 +886,9 @@ public class OpenAiAssistantEngine {
                 if (jsonResponse.getJSONArray("data").length() > 0) {
                     return jsonResponse.getJSONArray("data").getJSONObject(0).toString();
                 }
+                return null;
+            } catch (IOException e) {
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -1059,16 +955,7 @@ public class OpenAiAssistantEngine {
                 logResponse("run_cancel", responseStr);
                 return responseStr;
             } catch (IOException e) {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to cancel run: " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return null;
             }
         } catch (IOException e) {
@@ -1097,16 +984,7 @@ public class OpenAiAssistantEngine {
             if (responseCode >= 200 && responseCode < 300) {
                 return true;
             } else {
-                try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
-                    String inputLine;
-                    StringBuilder errorResponse = new StringBuilder();
-                    while ((inputLine = errorReader.readLine()) != null) {
-                        errorResponse.append(inputLine);
-                    }
-                    System.out.println("Failed to delete " + resourceType + ": " + errorResponse.toString());
-                } catch (IOException ex) {
-                    System.out.println("Failed to read error response: " + ex.getMessage());
-                }
+                handleErrorResponse(con);
                 return false;
             }
         } catch (IOException e) {
