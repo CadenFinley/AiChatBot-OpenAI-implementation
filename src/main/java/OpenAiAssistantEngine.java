@@ -125,13 +125,35 @@ public class OpenAiAssistantEngine {
                 if (responseCode == 200) {
                     return Boolean.TRUE;
                 } else {
+                    switch (responseCode) {
+                        case 401 ->
+                            System.out.println("Invalid API key.");
+                        case 403 ->
+                            System.out.println("API key is not authorized.");
+                        case 429 ->
+                            System.out.println("Rate limit exceeded.");
+                        case 400 ->
+                            System.out.println("Bad request.");
+                        case 404 ->
+                            System.out.println("Resource not found.");
+                        case 500 ->
+                            System.out.println("Internal server error.");
+                        case 503 ->
+                            System.out.println("Service unavailable.");
+                        case 504 ->
+                            System.out.println("Gateway timeout.");
+                        case 502 ->
+                            System.out.println("Bad gateway.");
+                        default ->
+                            System.out.println("Unexpected response code: " + responseCode);
+                    }
                     try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getErrorStream()))) {
                         String inputLine;
                         StringBuilder errorResponse = new StringBuilder();
                         while ((inputLine = in.readLine()) != null) {
                             errorResponse.append(inputLine);
                         }
-                        System.out.println("Failed to test API key: " + errorResponse.toString());
+                        System.out.println(errorResponse.toString());
                     } catch (IOException ex) {
                         System.out.println("Failed to read error response: " + ex.getMessage());
                     }
