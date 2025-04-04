@@ -41,7 +41,7 @@ public class Chatbot {
                 "Personal AI Academic Advisor",
                 null, // i dont think this is really needed
                 "You are a real-time chat AI Academic Advisor for Abilene Christian University. Address the student by their first and last name based on the user info provided in the user_info.txt file. Provide information about the student's academic journey, courses, and other academic-related topics.",
-                null, //not supported by this specific model
+                null, // only supported by o models
                 List.of("file_search"),
                 null, // we will add this later with the vector store
                 0.1,
