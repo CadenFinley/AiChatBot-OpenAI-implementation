@@ -118,20 +118,35 @@ public class OpenAiAssistantEngine {
         switch (responseCode) {
             case 400 ->
                 errorMessage = "Bad Request: The server could not understand the request due to invalid syntax.";
-            case 401 ->
-                errorMessage = "Unauthorized: The API key is invalid or missing.";
+            case 401 -> {
+                errorMessage = "Unauthorized: The API key is invalid or missing.\n"
+                        + "Possible Causes:\n"
+                        + "- Invalid Authentication: Ensure the correct API key and requesting organization are being used.\n"
+                        + "- Incorrect API key provided: Verify the API key, clear your browser cache, or generate a new one.\n"
+                        + "- You must be a member of an organization to use the API: Contact support to join an organization or ask your organization manager to invite you.";
+            }
             case 403 ->
-                errorMessage = "Forbidden: You do not have permission to access this resource.";
+                errorMessage = "Forbidden: You do not have permission to access this resource.\n"
+                        + "Cause: You are accessing the API from an unsupported country, region, or territory.\n"
+                        + "Solution: Please see the OpenAI documentation for supported regions.";
             case 404 ->
                 errorMessage = "Not Found: The requested resource could not be found.";
-            case 429 ->
-                errorMessage = "Too Many Requests: You have exceeded the rate limit.";
+            case 429 -> {
+                errorMessage = "Too Many Requests: You have exceeded the rate limit.\n"
+                        + "Possible Causes:\n"
+                        + "- Rate limit reached for requests: Pace your requests. Read the Rate limit guide.\n"
+                        + "- You exceeded your current quota: Check your plan and billing details, or buy more credits.";
+            }
             case 500 ->
-                errorMessage = "Internal Server Error: The server encountered an error and could not complete your request.";
+                errorMessage = "Internal Server Error: The server encountered an error and could not complete your request.\n"
+                        + "Solution: Retry your request after a brief wait and contact support if the issue persists. Check the status page.";
             case 502 ->
                 errorMessage = "Bad Gateway: The server received an invalid response from the upstream server.";
             case 503 ->
-                errorMessage = "Service Unavailable: The server is not ready to handle the request.";
+                errorMessage = "Service Unavailable: The server is not ready to handle the request.\n"
+                        + "Possible Causes:\n"
+                        + "- The engine is currently overloaded: Retry your requests after a brief wait.\n"
+                        + "- Slow Down: Reduce your request rate to its original level, maintain a consistent rate for at least 15 minutes, and then gradually increase it.";
             case 504 ->
                 errorMessage = "Gateway Timeout: The server did not receive a timely response from the upstream server.";
             default ->
