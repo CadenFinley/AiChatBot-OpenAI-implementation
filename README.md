@@ -60,6 +60,7 @@ OpenAiAssistantEngine is a Java library designed to communicate with OpenAI's As
 - Create and manage assistants.
 - Create threads to hold conversation flows.
 - Run queries and retrieve responses.
+- Log responses and handle errors effectively.
 
 ### Usage
 
@@ -151,7 +152,36 @@ List<String> messages = engine.listMessages(threadId, runId);
 messages.forEach(System.out::println);
 ```
 
-#### 6. Update an Assistant
+#### 6. Error Handling
+The engine provides detailed error messages for various HTTP response codes. For example:
+- **400**: Bad Request
+- **401**: Unauthorized
+- **429**: Too Many Requests
+- **500**: Internal Server Error
+
+Errors are logged to the console with detailed descriptions and possible solutions. Example:
+```java
+// If an error occurs during a request, it will be logged automatically
+engine.uploadFile(new File("invalid/path"), "assistants");
+```
+
+#### 7. Response Logging
+The engine logs responses by category (e.g., "file_upload", "assistant", "thread"). You can retrieve or clear these logs:
+```java
+// Retrieve all responses for a category
+List<String> fileUploadResponses = engine.getResponsesByCategory("file_upload");
+
+// Get the latest response
+String latestResponse = engine.getLatestResponse("file_upload");
+
+// Clear responses for a category
+engine.clearCategory("file_upload");
+
+// Clear all responses
+engine.clearAllResponses();
+```
+
+#### 8. Update an Assistant
 You can change assistant properties, such as adding more tool resources:
 ```java
 Map<String, Object> toolResources = new HashMap<>();
@@ -159,7 +189,7 @@ toolResources.put("file_search", Map.of("vector_store_ids", List.of(vectorStoreI
 boolean updateSuccess = engine.updateAssistant(assistantId, toolResources);
 ```
 
-#### 7. Housekeeping
+#### 9. Housekeeping
 - You can delete resources if needed:
 ```java
 engine.deleteResource("threads", threadId);
